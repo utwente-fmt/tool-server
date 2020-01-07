@@ -1,0 +1,14 @@
+{
+  "name": "tool-server",
+  "version": "1.0.0",
+  "description": "A websocket bridge to invoke a command line tool",
+  "main": "server.js",
+  "author": {
+    "name": "Pieter Bos",
+    "email": "p.h.bos@student.utwente.nl"
+  },
+  "dependencies": {
+    "websocket": "^1.0.30",
+    "uuid": "^3.3.3"
+  }
+}
