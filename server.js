@@ -97,17 +97,16 @@ function validateFiles(files, depth) {
     return `file structure too nested: max depth is ${util.MAX_PATH_DEPTH}`;
   }
   if(typeof files === 'string') {
-    if(files.length > util.MAX_FILE_NAME_LENGTH) {
-      return 'filenames may not be longer than 64 characters';
-    }
-
-    if(!util.FILE_PATTERN.test(files)) {
-      return 'Filenames may only contain letters, numbers, - and _. They must have a non-empty extension or no extension.';
-    }
+    // For now there are no particular conditions on files; the whole WS message
+    // is limited to 10MiB.
   } else if(typeof files === 'object') {
     for(let [name, child] of Object.entries(files)) {
+      if(name.length > util.MAX_FILE_NAME_LENGTH) {
+        return 'filenames may not be longer than 64 characters';
+      }
+
       if(!util.FILE_PATTERN.test(name)) {
-        return 'Directories may only contain letters, numbers, - and _.';
+        return 'Filenames may only contain letters, numbers, - and _. They must have a non-empty extension or no extension.';
       }
 
       let err = validateFiles(child, depth+1);
@@ -201,7 +200,7 @@ function submit(conn, message) {
   });
 
   p.on('close', (code) => {
-    conn.sendUTF(JSON.stringify({'type': 'finished', 'id': id, 'error': false, 'exitCode': code}));
+    conn.sendUTF(JSON.stringify({'type': 'finished', 'id': id, 'exitCode': code}));
     deleteFilesSync(path, files);
   });
 }
