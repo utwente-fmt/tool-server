@@ -13,7 +13,11 @@ jobs:
       with:
         root_file: guide.tex
     - name: Upload PDF
-      uses: actions/upload-artifact@v1
-      with: 
-        name: guide.pdf
-        path: guide.pdf
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: https://uploads.github.com/repos/utwente-fmt/tool-server/releases/latest/assets?name=guide.pdf
+        asset_path: guide.pdf
+        asset_name: guide.pdf
+        asset_content_type: application/pdf
