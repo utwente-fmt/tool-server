@@ -6,6 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
     - name: LaTeX compilation
       uses: dante-ev/latex-action@v0.2.0
       with:
