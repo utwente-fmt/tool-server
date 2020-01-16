@@ -1,0 +1,117 @@
+\newcommand{\toolServerVersion}{v1.0.1}
+\newcommand{\dockerHubAdmin}{Tom van Dijk}
+
+\documentclass{article}
+
+\usepackage{hyperref}
+\hypersetup{colorlinks=false,pdfborderstyle={/S/U/W 1}} % underline 1pt
+\usepackage{listings}
+\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
+\lstset{framesep=12pt,frame=single}
+
+\author{Pieter Bos}
+\title{Guide for tool-server}
+\date{Last updated: \today}
+
+\newcommand{\ts}{\texttt{tool-server}}
+
+\begin{document}
+\maketitle
+
+This document describes how to make a tool produced by the FMT group available to try online. The common part, \ts, is a small piece of software that accepts files and arguments, and then streams the output of a process over a websocket. This makes the output of a tool available in a browser in real-time.
+
+Our task is to describe our tool to \ts. We do this by deriving a docker image from \texttt{utwentefmt/tool-server}, available at \url{https://hub.docker.com/repository/docker/utwentefmt/tool-server}. We presuppose that you have some experience working with git, node.js and the command line. You do not need experience with docker, but it's advisable to read about it a bit.
+
+\section{Install Docker}
+Docker is quite large to install, but debugging a docker image without having it installed yourself is quite cumbersome. The deployment platform of the university is based on Docker, so that is why we use it. Install docker for your OS by following the guide at \url{https://docs.docker.com/install/}.
+
+\section{Create a docker image repository}
+You can use \url{https://github.com/utwente-fmt/vercors-server} as an example. Create a public git repository, and create a file \texttt{Dockerfile} containing:
+
+\begin{lstlisting}[escapechar=\%]
+FROM utwentefmt/tool-server:%\toolServerVersion%
+\end{lstlisting}
+
+This instructs docker to base your image on \ts. Next, we have to isntruct docker to install your tool. It heavily depends on how you regularly install your tool; the only thing that is not really recommended is to compile the tool in the image itself. Here are some examples:
+
+\begin{lstlisting}
+# Install some dependencies via apt
+RUN apt-get -q update && \
+    apt-get -qy install openjdk-8-jre-headless clang && \
+    rm -r /var/lib/apt/lists/*
+
+# Install a tool from a .deb file
+RUN wget -q -O vercors.deb https://some.url/v.1.01.deb && \
+    dpkg -i vercors.deb && \
+    rm vercors.deb
+
+# Grab a binary from somewhere
+RUN wget -q -O /usr/bin/tool https://some.url/tool
+
+# Copy a binary committed to this repository
+COPY tool.run /usr/bin/tool.run
+\end{lstlisting}
+
+Refer to the docker documentation for more information. You do not need to have a \texttt{RUN} declaration, that is dealt with by \ts.
+
+\section{Setting up tool.js}
+\ts is a node.js server that expects a file \texttt{tool.js} in the image, so create \texttt{tool.js}:
+
+\begin{lstlisting}
+let util = require('./util');
+
+exports.getProcess = function getProcess(arguments, rootPath, files) {
+  return {
+    command: 'yourToolName',
+    args: ['tool', 'arguments', 'here'],
+    options: {}
+  };
+};
+\end{lstlisting}
+
+Here \texttt{arguments} is provided over the websocket (as JSON) and can be in any format. \texttt{rootPath} is the temporary directory in which the file structure submitted by the user lives. This is automatically removed once the process completes. \texttt{files} is the file structure that was submitted.
+
+You need to return the definition of your process. The object is passed to \texttt{child\_process.spawn}, see here: \url{https://nodejs.org/api/child_process.html\#child_process_child_process_spawn_command_args_options}. \texttt{command} should be the path to your tool, \texttt{args} are the command-line arguments passed to it. I believe the default working directory is /, you may want to change it if necessary.
+
+\texttt{files} is validated by \ts, but \texttt{arguments} is not: remember that you are passing arbitrary user data to a process, so validate. In particular, setting \texttt{args:arguments} is probably a bad idea. Perhaps \texttt{util} will be useful to you; in particular \texttt{requirePath} can be used to assert that a string is a valid path in the submitted files.
+
+\section{Test the tool}
+Build the image by running, from the repository root:
+
+\begin{lstlisting}
+docker build . -t tool-name-server
+\end{lstlisting}
+
+If everything went well, you should be able to run the tool server:
+
+\begin{lstlisting}
+docker run -p1234:1234 tool-name-server:latest
+\end{lstlisting}
+
+There should now be a websocket server running on port 1234. I was not able to find a good test client for websockets, but the debugging console of a web browser works adequately. Navigate to \texttt{http://localhost:1234/} and open a dev console (F12 or so). Open a websocket connection and echo any messages:
+
+\begin{lstlisting}
+var ws = new WebSocket('ws://localhost:1234/', 'fmt-tool'); ws.onmessage = function(e) { console.log(JSON.parse(e.data)); }
+\end{lstlisting}
+
+You can send a message like this:
+
+\begin{lstlisting}
+ws.send(JSON.stringify({type: 'submit', files: {'test.pvl': 'class Test{}'}, arguments: {files: ['test.pvl']}}))
+\end{lstlisting}
+
+The files are placed in the file system. Nested objects represent directories. The arguments are passed directly to tool.js.
+
+If things went well, the console should log the output of your tool and finish with the exit code.
+
+\section{Publish your image}
+Make an account on \url{https://hub.docker.com/}, and gain rights to the utwentefmt organization (contact \dockerHubAdmin). Make a new (docker hub) repository, and link your (github/bitbucket) repository to automatically build your image in docker hub. Make sure that you add a build rule; the default is probably fine (that builds on any commit on master). Click create and build. After a while, docker hub should inform you that the build succeeded.
+
+We're almost done!
+
+\section{Deploy your image}
+Contact \utrancherAdmin to deploy your image on the university cluster. After that, your application should be available at \texttt{wss://tool-name.apps.utwente.nl/}. From here, you can include the tool in your website, or perhaps in the future we'll have a centralized website for all the FMT tools.
+
+
+
+\end{document}
