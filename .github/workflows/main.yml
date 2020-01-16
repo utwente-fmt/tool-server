@@ -12,12 +12,15 @@ jobs:
       uses: dante-ev/latex-action@v0.2.0
       with:
         root_file: guide.tex
+    - name: Fetch last release
+      uses: "WyriHaximus/github-action-get-previous-tag@0.1.0"
+      id: "version"
     - name: Upload PDF
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: https://uploads.github.com/repos/utwente-fmt/tool-server/releases/latest/assets?name=guide.pdf
+        upload_url: https://uploads.github.com/repos/utwente-fmt/tool-server/releases/${{ steps.version.outputs.tag }}/assets?name=guide.pdf
         asset_path: guide.pdf
         asset_name: guide.pdf
         asset_content_type: application/pdf
