@@ -13,7 +13,7 @@ jobs:
       with:
         root_file: guide.tex
     - name: Fetch last release
-      uses: "WyriHaximus/github-action-get-previous-tag@0.1.0"
+      run: 'echo "::set-output name=tag::$(git describe --tags --abbrev=0)"'
       id: "version"
     - name: Upload PDF
       uses: actions/upload-release-asset@v1.0.1
